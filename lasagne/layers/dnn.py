@@ -239,7 +239,7 @@ class Conv2DDNNLayer(DNNLayer):
     def __init__(self, incoming, num_filters, filter_size, stride=(1, 1),
                  pad=0, untie_biases=False, W=init.GlorotUniform(),
                  b=init.Constant(0.), nonlinearity=nonlinearities.rectify,
-                 pad=None, flip_filters=False,
+                 flip_filters=False,
                  W_lr_mult=1., b_lr_mult=1.,
                  **kwargs):
         super(Conv2DDNNLayer, self).__init__(incoming, **kwargs)

@@ -206,7 +206,7 @@ class Conv2DCCLayer(CCLayer):
     def __init__(self, incoming, num_filters, filter_size, stride=(1, 1),
                  pad=0, untie_biases=False, W=None,
                  b=init.Constant(0.), nonlinearity=nonlinearities.rectify,
-                 pad=None, dimshuffle=True, flip_filters=False, partial_sum=1,
+                 dimshuffle=True, flip_filters=False, partial_sum=1,
                  W_lr_mult=1., b_lr_mult=1.,
                  **kwargs):
         super(Conv2DCCLayer, self).__init__(incoming, **kwargs)
