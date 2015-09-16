@@ -1,7 +1,7 @@
 import theano
-import numpy as np
 
 from .base import Layer
+from ..random import get_rng
 
 from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams
 
@@ -14,7 +14,7 @@ __all__ = [
 
 
 class DropoutLayer(Layer):
-    """Dropout layer [1]_, [2]_
+    """Dropout layer
 
     Sets values to zero with probability p. See notes for disabling dropout
     during testing.
@@ -32,7 +32,7 @@ class DropoutLayer(Layer):
     Notes
     -----
     The dropout layer is a regularizer that randomly sets input values to
-    zero, see references for why this might improve generalization.
+    zero; see [1]_, [2]_ for why this might improve generalization.
     During training you should set deterministic to false and during
     testing you should set deterministic to true.
 
@@ -54,7 +54,7 @@ class DropoutLayer(Layer):
     """
     def __init__(self, incoming, p=0.5, rescale=True, **kwargs):
         super(DropoutLayer, self).__init__(incoming, **kwargs)
-        self._srng = RandomStreams(np.random.randint(1, 2147462579))
+        self._srng = RandomStreams(get_rng().randint(1, 2147462579))
         self.p = p
         self.rescale = rescale
 
@@ -86,16 +86,16 @@ dropout = DropoutLayer  # shortcut
 
 
 class GaussianNoiseLayer(Layer):
-    """Gaussian noise layer [1]_.
+    """Gaussian noise layer.
 
-    Add zero Gaussian noise with mean 0 and std sigma to the input
+    Add zero-mean Gaussian noise of given standard deviation to the input [1]_.
 
     Parameters
     ----------
     incoming : a :class:`Layer` instance or a tuple
             the layer feeding into this layer, or the expected input shape
     sigma : float or tensor scalar
-            Std of added Gaussian noise
+            Standard deviation of added Gaussian noise
 
     Notes
     -----
@@ -112,7 +112,7 @@ class GaussianNoiseLayer(Layer):
     """
     def __init__(self, incoming, sigma=0.1, **kwargs):
         super(GaussianNoiseLayer, self).__init__(incoming, **kwargs)
-        self._srng = RandomStreams(np.random.randint(1, 2147462579))
+        self._srng = RandomStreams(get_rng().randint(1, 2147462579))
         self.sigma = sigma
 
     def get_output_for(self, input, deterministic=False, **kwargs):

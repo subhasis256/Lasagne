@@ -10,7 +10,6 @@ from .base import Layer
 __all__ = [
     "DenseLayer",
     "NINLayer",
-    "NonlinearityLayer"
 ]
 
 
@@ -93,39 +92,13 @@ class DenseLayer(Layer):
         return self.nonlinearity(activation)
 
 
-class NonlinearityLayer(Layer):
-    """
-    lasagne.layers.NonlinearityLayer(incoming,
-    nonlinearity=lasagne.nonlinearities.rectify, **kwargs)
-
-    A layer that just applies a nonlinearity.
-
-    Parameters
-    ----------
-    incoming : a :class:`Layer` instance or a tuple
-        The layer feeding into this layer, or the expected input shape
-
-    nonlinearity : callable or None
-        The nonlinearity that is applied to the layer activations. If None
-        is provided, the layer will be linear.
-    """
-    def __init__(self, incoming, nonlinearity=nonlinearities.rectify,
-                 **kwargs):
-        super(NonlinearityLayer, self).__init__(incoming, **kwargs)
-        self.nonlinearity = (nonlinearities.identity if nonlinearity is None
-                             else nonlinearity)
-
-    def get_output_for(self, input, **kwargs):
-        return self.nonlinearity(input)
-
-
 class NINLayer(Layer):
     """
     lasagne.layers.NINLayer(incoming, num_units, untie_biases=False,
     W=lasagne.init.GlorotUniform(), b=lasagne.init.Constant(0.),
     nonlinearity=lasagne.nonlinearities.rectify, **kwargs)
 
-    Network-in-network layer [1]_.
+    Network-in-network layer.
     Like DenseLayer, but broadcasting across all trailing dimensions beyond the
     2nd.  This results in a convolution operation with filter size 1 on all
     trailing dimensions.  Any number of trailing dimensions is supported,

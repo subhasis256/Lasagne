@@ -19,18 +19,15 @@ class Layer(object):
     Because each layer can keep track of the layer(s) feeding into it, a
     network's output :class:`Layer` instance can double as a handle to the full
     network.
+
+    Parameters
+    ----------
+    incoming : a :class:`Layer` instance or a tuple
+        The layer feeding into this layer, or the expected input shape.
+    name : a string or None
+        An optional name to attach to this layer.
     """
     def __init__(self, incoming, name=None):
-        """
-        Instantiates the layer.
-
-        Parameters
-        ----------
-        incoming : a :class:`Layer` instance or a tuple
-            The layer feeding into this layer, or the expected input shape.
-        name : a string or None
-            An optional name to attach to this layer.
-        """
         if isinstance(incoming, tuple):
             self.input_shape = incoming
             self.input_layer = None
@@ -100,28 +97,6 @@ class Layer(object):
 
     def get_lr_mult(self, param):
         return self.lr_mults[param]
-
-    def get_output_shape(self):  # pragma: no cover
-        """
-        Deprecated. Use `layer.output_shape`.
-        """
-        import warnings
-        warnings.warn("layer.get_output_shape() is deprecated and will be "
-                      "removed for the first release of Lasagne. Please use "
-                      "layer.output_shape instead.", stacklevel=2)
-        return self.output_shape
-
-    def get_output(self, input=None, **kwargs):  # pragma: no cover
-        """
-        Deprecated. Use `lasagne.layers.get_output(layer, input, **kwargs)`.
-        """
-        import warnings
-        warnings.warn("layer.get_output(...) is deprecated and will be "
-                      "removed for the first release of Lasagne. Please use "
-                      "lasagne.layers.get_output(layer, ...) instead.",
-                      stacklevel=2)
-        from .helper import get_output
-        return get_output(self, input, **kwargs)
 
     def get_output_shape_for(self, input_shape):
         """
@@ -245,32 +220,21 @@ class Layer(object):
 
         return param
 
-    def get_bias_params(self):  # pragma: no cover
-        import warnings
-        warnings.warn("layer.get_bias_params() is deprecated and will be "
-                      "removed for the first release of Lasagne. Please use "
-                      "layer.get_params(regularizable=False) instead.",
-                      stacklevel=2)
-        return self.get_params(regularizable=False)
-
 
 class MergeLayer(Layer):
     """
     This class represents a layer that aggregates input from multiple layers.
     It should be subclassed when implementing new types of layers that obtain
     their input from multiple layers.
+
+    Parameters
+    ----------
+    incomings : a list of :class:`Layer` instances or tuples
+        The layers feeding into this layer, or expected input shapes.
+    name : a string or None
+        An optional name to attach to this layer.
     """
     def __init__(self, incomings, name=None):
-        """
-        Instantiates the layer.
-
-        Parameters
-        ----------
-        incomings : a list of :class:`Layer` instances or tuples
-            The layers feeding into this layer, or expected input shapes.
-        name : a string or None
-            An optional name to attach to this layer.
-        """
         self.input_shapes = [incoming if isinstance(incoming, tuple)
                              else incoming.output_shape
                              for incoming in incomings]

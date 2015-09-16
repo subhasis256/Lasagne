@@ -4,13 +4,14 @@ Functions to create initializers for parameter variables.
 Examples
 --------
 >>> from lasagne.layers import DenseLayer
->>> from lasagne.init import Constant, Glorot
+>>> from lasagne.init import Constant, GlorotUniform
 >>> l1 = DenseLayer((100,20), num_units=50, W=GlorotUniform(), b=Constant(0.0))
 """
 
 import numpy as np
 
 from .utils import floatX
+from .random import get_rng
 
 
 class Initializer(object):
@@ -61,7 +62,7 @@ class Normal(Initializer):
         self.mean = mean
 
     def sample(self, shape):
-        return floatX(np.random.normal(self.mean, self.std, size=shape))
+        return floatX(get_rng().normal(self.mean, self.std, size=shape))
 
 
 class Uniform(Initializer):
@@ -82,13 +83,6 @@ class Uniform(Initializer):
         see std for description.
     """
     def __init__(self, range=0.01, std=None, mean=0.0):
-        import warnings
-        warnings.warn("The uniform initializer no longer uses Glorot et al.'s "
-                      "approach to determine the bounds, but defaults to the "
-                      "range (-0.01, 0.01) instead. Please use the new "
-                      "GlorotUniform initializer to get the old behavior. "
-                      "GlorotUniform is now the default for all layers.")
-
         if std is not None:
             a = mean - np.sqrt(3) * std
             b = mean + np.sqrt(3) * std
@@ -101,7 +95,7 @@ class Uniform(Initializer):
         self.range = (a, b)
 
     def sample(self, shape):
-        return floatX(np.random.uniform(
+        return floatX(get_rng().uniform(
             low=self.range[0], high=self.range[1], size=shape))
 
 
@@ -317,9 +311,9 @@ class Sparse(Initializer):
 
         for k in range(n_outputs):
             indices = np.arange(n_inputs)
-            np.random.shuffle(indices)
+            get_rng().shuffle(indices)
             indices = indices[:size]
-            values = floatX(np.random.normal(0.0, self.std, size=size))
+            values = floatX(get_rng().normal(0.0, self.std, size=size))
             w[indices, k] = values
 
         return w
@@ -350,7 +344,7 @@ class Orthogonal(Initializer):
                                "supported.")
 
         flat_shape = (shape[0], np.prod(shape[1:]))
-        a = np.random.normal(0.0, 1.0, flat_shape)
+        a = get_rng().normal(0.0, 1.0, flat_shape)
         u, _, v = np.linalg.svd(a, full_matrices=False)
         # pick the one with the correct shape
         q = u if u.shape == flat_shape else v

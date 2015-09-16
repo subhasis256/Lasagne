@@ -51,6 +51,11 @@ class Pool2DDNNLayer(DNNLayer):
         in each dimension. Each value must be less than
         the corresponding stride.
 
+    ignore_border : bool (default: True)
+        This implementation never includes partial pooling regions, so this
+        argument must always be set to True. It exists only to make sure the
+        interface is compatible with :class:`lasagne.layers.MaxPool2DLayer`.
+
     mode : string
         Pooling mode, one of 'max', 'average_inc_pad' or 'average_exc_pad'.
         Defaults to 'max'.
@@ -70,7 +75,7 @@ class Pool2DDNNLayer(DNNLayer):
     argument.
     """
     def __init__(self, incoming, pool_size, stride=None, pad=(0, 0),
-                 mode='max', **kwargs):
+                 ignore_border=True, mode='max', **kwargs):
         super(Pool2DDNNLayer, self).__init__(incoming, **kwargs)
         self.pool_size = as_tuple(pool_size, 2)
         if stride is None:
@@ -79,6 +84,12 @@ class Pool2DDNNLayer(DNNLayer):
             self.stride = as_tuple(stride, 2)
         self.pad = as_tuple(pad, 2)
         self.mode = mode
+        # The ignore_border argument is for compatibility with MaxPool2DLayer.
+        # ignore_border=False is not supported. Borders are always ignored.
+        if not ignore_border:
+            raise NotImplementedError("Pool2DDNNLayer does not support "
+                                      "ignore_border=False.")
+
 
     def get_output_shape_for(self, input_shape):
         output_shape = list(input_shape)  # copy / convert to mutable list
@@ -86,15 +97,15 @@ class Pool2DDNNLayer(DNNLayer):
         output_shape[2] = pool_output_length(input_shape[2],
                                              pool_size=self.pool_size[0],
                                              stride=self.stride[0],
-                                             ignore_border=True,
                                              pad=self.pad[0],
+                                             ignore_border=True,
                                              )
 
         output_shape[3] = pool_output_length(input_shape[3],
                                              pool_size=self.pool_size[1],
                                              stride=self.stride[1],
-                                             ignore_border=True,
                                              pad=self.pad[1],
+                                             ignore_border=True,
                                              )
 
         return tuple(output_shape)
@@ -104,19 +115,26 @@ class Pool2DDNNLayer(DNNLayer):
                             self.mode, self.pad)
 
 
-class MaxPool2DDNNLayer(Pool2DDNNLayer):  # for consistency
+class MaxPool2DDNNLayer(Pool2DDNNLayer):
+    """
+    2D max-pooling layer
+
+    Subclass of :class:`Pool2DDNNLayer` fixing ``mode='max'``, provided for
+    compatibility to other ``MaxPool2DLayer`` classes.
+    """
     def __init__(self, incoming, pool_size, stride=None,
-                 pad=(0, 0), **kwargs):
+                 pad=(0, 0), ignore_border=True, **kwargs):
         super(MaxPool2DDNNLayer, self).__init__(incoming, pool_size, stride,
-                                                pad, mode='max', **kwargs)
+                                                pad, ignore_border, mode='max',
+                                                **kwargs)
 
 
 class Conv2DDNNLayer(DNNLayer):
     """
     lasagne.layers.Conv2DDNNLayer(incoming, num_filters, filter_size,
-    stride=(1, 1), border_mode=None, untie_biases=False,
+    stride=(1, 1), pad=0, untie_biases=False,
     W=lasagne.init.GlorotUniform(), b=lasagne.init.Constant(0.),
-    nonlinearity=lasagne.nonlinearities.rectify, pad=None, flip_filters=False,
+    nonlinearity=lasagne.nonlinearities.rectify, flip_filters=False,
     **kwargs)
 
     2D convolutional layer
@@ -135,30 +153,38 @@ class Conv2DDNNLayer(DNNLayer):
     num_filters : int
         The number of learnable convolutional filters this layer has.
 
-    filter_size : int or iterable
+    filter_size : int or iterable of int
         An integer or a 2-element tuple specifying the size of the filters.
 
-    stride : int or iterable
+    stride : int or iterable of int
         An integer or a 2-element tuple specifying the stride of the
         convolution operation.
 
-    border_mode : str, one of 'valid', 'full', 'same'
-        A string indicating the convolution border mode.
+    pad : int, iterable of int, 'full', 'same' or 'valid' (default: 0)
+        By default, the convolution is only computed where the input and the
+        filter fully overlap (a valid convolution). When ``stride=1``, this
+        yields an output that is smaller than the input by ``filter_size - 1``.
+        The `pad` argument allows you to implicitly pad the input with zeros,
+        extending the output size.
 
-        If 'valid', the convolution is only computed where the input and the
-        filter fully overlap.
+        A single integer results in symmetric zero-padding of the given size on
+        all borders, a tuple of two integers allows different symmetric padding
+        per dimension.
 
-        If 'full', the convolution is computed wherever the input and the
+        ``'full'`` pads with one less than the filter size on both sides. This
+        is equivalent to computing the convolution wherever the input and the
         filter overlap by at least one position.
 
-        If 'same', the convolution is computed wherever the input and the
-        filter overlap by at least half the filter size, when the filter size
-        is odd. In practice, the input is zero-padded with half the filter size
-        at the beginning and half at the end (or one less than half in the case
-        of an even filter size). This results in an output length that is the
-        same as the input length (for both odd and even filter sizes).
+        ``'same'`` pads with half the filter size on both sides (one less on
+        the second side for an even filter size). When ``stride=1``, this
+        results in an output size equal to the input size.
 
-    untie_biases : bool, default False
+        ``'valid'`` is an alias for ``0`` (no padding / a valid convolution).
+
+        Note that ``'full'`` and ``'same'`` can be faster than equivalent
+        integer values due to optimizations by Theano.
+
+    untie_biases : bool (default: False)
         If ``False``, the layer will have a bias parameter for each channel,
         which is shared across all positions in this channel. As a result, the
         `b` attribute will be a vector (1D).
@@ -185,12 +211,7 @@ class Conv2DDNNLayer(DNNLayer):
         The nonlinearity that is applied to the layer activations. If None
         is provided, the layer will be linear.
 
-    pad : int, iterable or None
-        An integer or a 2-element tuple specifying the amount of zero-padding
-        on each side. This may also be ``None``, in which case the correct
-        amount of padding will be inferred from the specified ``border_mode``.
-
-    flip_filters : bool, default False
+    flip_filters : bool (default: False)
         Whether to flip the filters and perform a convolution, or not to flip
         them and perform a correlation. Flipping adds a bit of overhead, so it
         is disabled by default. In most cases this does not make a difference
@@ -212,13 +233,11 @@ class Conv2DDNNLayer(DNNLayer):
     Notes
     -----
     Unlike :class:`lasagne.layers.Conv2DLayer`, this layer properly supports
-    the 'same' border mode. It is not emulated. This should result in better
+    ``pad='same'``. It is not emulated. This should result in better
     performance.
-
-    Only one of ``pad`` and ``border_mode`` should be specified.
     """
     def __init__(self, incoming, num_filters, filter_size, stride=(1, 1),
-                 border_mode=None, untie_biases=False, W=init.GlorotUniform(),
+                 pad=0, untie_biases=False, W=init.GlorotUniform(),
                  b=init.Constant(0.), nonlinearity=nonlinearities.rectify,
                  pad=None, flip_filters=False,
                  W_lr_mult=1., b_lr_mult=1.,
@@ -235,34 +254,19 @@ class Conv2DDNNLayer(DNNLayer):
         self.untie_biases = untie_biases
         self.flip_filters = flip_filters
 
-        if border_mode is not None and pad is not None:
-            raise RuntimeError("You cannot specify both 'border_mode' and "
-                               "'pad'. To avoid ambiguity, please specify "
-                               "only one of them.")
-        elif border_mode is None and pad is None:
-            # no option specified, default to valid mode
+        if pad == 'valid':
             self.pad = (0, 0)
-            self.border_mode = 'valid'
-        elif border_mode is not None:
-            if border_mode == 'valid':
-                self.pad = (0, 0)
-                self.border_mode = 'valid'
-            elif border_mode == 'full':
-                self.pad = (self.filter_size[0] - 1, self.filter_size[1] - 1)
-                self.border_mode = 'full'
-            elif border_mode == 'same':
-                # dnn_conv does not support same, so we just specify
-                # padding directly.
-                # only works for odd filter size, but the even filter size
-                # case is probably not worth supporting.
-                self.pad = ((self.filter_size[0] - 1) // 2,
-                            (self.filter_size[1] - 1) // 2)
-                self.border_mode = None
-            else:
-                raise RuntimeError("Invalid border mode: '%s'" % border_mode)
+        elif pad == 'full':
+            self.pad = 'full'
+        elif pad == 'same':
+            # dnn_conv does not support same, so we just specify
+            # padding directly.
+            # only works for odd filter size, but the even filter size
+            # case is probably not worth supporting.
+            self.pad = ((self.filter_size[0] - 1) // 2,
+                        (self.filter_size[1] - 1) // 2)
         else:
-            self.pad = as_tuple(pad, 2)
-            self.border_mode = None
+            self.pad = as_tuple(pad, 2, int)
 
         self.W = self.add_param(W, self.get_W_shape(), name="W",
                                 lr_mult=W_lr_mult)
@@ -284,31 +288,28 @@ class Conv2DDNNLayer(DNNLayer):
 
     def get_output_shape_for(self, input_shape):
         batch_size = input_shape[0]
+        pad = self.pad if isinstance(self.pad, tuple) else (self.pad,) * 2
 
         output_rows = conv_output_length(input_shape[2],
                                          self.filter_size[0],
                                          self.stride[0],
-                                         'pad', self.pad[0])
+                                         pad[0])
 
         output_columns = conv_output_length(input_shape[3],
                                             self.filter_size[1],
                                             self.stride[1],
-                                            'pad', self.pad[1])
+                                            pad[1])
 
         return (batch_size, self.num_filters, output_rows, output_columns)
 
     def get_output_for(self, input, **kwargs):
         # by default we assume 'cross', consistent with corrmm.
         conv_mode = 'conv' if self.flip_filters else 'cross'
-        # if 'border_mode' is one of 'valid' or 'full' use that.
-        # else use pad directly.
-        border_mode = (self.border_mode if (self.border_mode is not None)
-                       else self.pad)
 
         conved = dnn.dnn_conv(img=input,
                               kerns=self.W,
                               subsample=self.stride,
-                              border_mode=border_mode,
+                              border_mode=self.pad,
                               conv_mode=conv_mode
                               )
 

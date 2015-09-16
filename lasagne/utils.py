@@ -139,29 +139,42 @@ def unique(l, key=lambda x:x, val=lambda x:x):
     return new_val_list
 
 
-def as_tuple(x, N):
+def as_tuple(x, N, t=None):
     """
-    Coerce a value to a tuple of length N.
+    Coerce a value to a tuple of given length (and possibly given type).
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     x : value or iterable
     N : integer
         length of the desired tuple
+    t : type, optional
+        required type for all elements
 
-    Returns:
-    --------
+    Returns
+    -------
     tuple
         ``tuple(x)`` if `x` is iterable, ``(x,) * N`` otherwise.
+
+    Raises
+    ------
+    TypeError
+        if `type` is given and `x` or any of its elements do not match it
+    ValueError
+        if `x` is iterable, but does not have exactly `N` elements
     """
     try:
         X = tuple(x)
     except TypeError:
         X = (x,) * N
 
+    if (t is not None) and not all(isinstance(v, t) for v in X):
+        raise TypeError("expected a single value or an iterable "
+                        "of {0}, got {1} instead".format(t.__name__, x))
+
     if len(X) != N:
-        raise ValueError("input must be a single value "
-                         "or an iterable with length {0}".format(N))
+        raise ValueError("expected a single value or an iterable "
+                         "with length {0}, got {1} instead".format(N, x))
 
     return X
 
@@ -301,3 +314,77 @@ def create_param(spec, shape, name=None):
         raise RuntimeError("cannot initialize parameters: 'spec' is not "
                            "a numpy array, a Theano shared variable, or a "
                            "callable")
+
+
+def unroll_scan(fn, sequences, outputs_info, non_sequences, n_steps,
+                go_backwards=False):
+        """
+        Helper function to unroll for loops. Can be used to unroll theano.scan.
+        The parameter names are identical to theano.scan, please refer to here
+        for more information.
+
+        Note that this function does not support the truncate_gradient
+        setting from theano.scan.
+
+        Parameters
+        ----------
+
+        fn : function
+            Function that defines calculations at each step.
+
+        sequences : TensorVariable or list of TensorVariables
+            List of TensorVariable with sequence data. The function iterates
+            over the first dimension of each TensorVariable.
+
+        outputs_info : list of TensorVariables
+            List of tensors specifying the initial values for each recurrent
+            value.
+
+        non_sequences: list of TensorVariables
+            List of theano.shared variables that are used in the step function.
+
+        n_steps: int
+            Number of steps to unroll.
+
+        go_backwards: bool
+            If true the recursion starts at sequences[-1] and iterates
+            backwards.
+
+        Returns
+        -------
+        List of TensorVariables. Each element in the list gives the recurrent
+        values at each time step.
+
+        """
+        if not isinstance(sequences, (list, tuple)):
+            sequences = [sequences]
+
+        # When backwards reverse the recursion direction
+        counter = range(n_steps)
+        if go_backwards:
+            counter = counter[::-1]
+
+        output = []
+        prev_vals = outputs_info
+        for i in counter:
+            step_input = [s[i] for s in sequences] + prev_vals + non_sequences
+            out_ = fn(*step_input)
+            # The returned values from step can be either a TensorVariable,
+            # a list, or a tuple.  Below, we force it to always be a list.
+            if isinstance(out_, T.TensorVariable):
+                out_ = [out_]
+            if isinstance(out_, tuple):
+                out_ = list(out_)
+            output.append(out_)
+
+            prev_vals = output[-1]
+
+        # iterate over each scan output and convert it to same format as scan:
+        # [[output11, output12,...output1n],
+        # [output21, output22,...output2n],...]
+        output_scan = []
+        for i in range(len(output[0])):
+            l = map(lambda x: x[i], output)
+            output_scan.append(T.stack(*l))
+
+        return output_scan
