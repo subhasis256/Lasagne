@@ -387,7 +387,7 @@ class Conv2DLayer(Layer):
     by cropping a full convolution or explicitly padding the input with zeros.
     """
     def __init__(self, incoming, num_filters, filter_size, stride=(1, 1),
-                 pad="valid", untie_biases=False, flip_filters=False,
+                 pad=0, untie_biases=False, flip_filters=False,
                  W=init.GlorotUniform(), b=init.Constant(0.),
                  nonlinearity=nonlinearities.rectify,
                  convolution=T.nnet.conv2d,
@@ -465,20 +465,11 @@ class Conv2DLayer(Layer):
         if self.flip_filters:
             filters = self.W[:,:,::-1,::-1]
 
-        if self.border_mode in ['valid', 'full']:
+        if self.stride == (1, 1) and self.pad == 'same':
+            # simulate same convolution by cropping a full convolution
             conved = self.convolution(input, filters, subsample=self.stride,
                                       image_shape=input_shape,
-                                      filter_shape=filter_shape,
-                                      border_mode=self.border_mode)
-        elif self.border_mode == 'same':
-            if self.stride != (1, 1):
-                raise NotImplementedError("Strided convolution with "
-                                          "border_mode 'same' is not "
-                                          "supported by this layer yet.")
-
-            conved = self.convolution(input, filters, subsample=self.stride,
-                                      image_shape=input_shape,
-                                      filter_shape=filter_shape,
+                                      filter_shape=self.get_W_shape(),
                                       border_mode='full')
             shift_x = (self.filter_size[0] - 1) // 2
             shift_y = (self.filter_size[1] - 1) // 2
