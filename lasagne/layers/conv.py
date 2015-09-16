@@ -505,7 +505,7 @@ class Conv2DLayer(Layer):
                                input_shape[2] + pad[0][0] + pad[0][1],
                                None if input_shape[3] is None else
                                input_shape[3] + pad[1][0] + pad[1][1])
-            conved = self.convolution(input, self.W, subsample=self.stride,
+            conved = self.convolution(input, filters, subsample=self.stride,
                                       image_shape=input_shape,
                                       filter_shape=self.get_W_shape(),
                                       border_mode=border_mode)
