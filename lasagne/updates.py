@@ -110,7 +110,7 @@ def get_or_compute_grads(loss_or_grads, params):
         return theano.grad(loss_or_grads, params)
 
 
-def sgd(loss_or_grads, params, learning_rate):
+def sgd(loss_or_grads, params, learning_rate, lr_mults=None):
     """Stochastic Gradient Descent (SGD) updates
 
     Generates update expressions of the form:
@@ -135,7 +135,12 @@ def sgd(loss_or_grads, params, learning_rate):
     updates = OrderedDict()
 
     for param, grad in zip(params, grads):
-        updates[param] = param - learning_rate * grad
+        if lr_mults is not None:
+            lr_mult = lr_mults.get(param, 1.)
+        else:
+            lr_mult = 1.
+
+        updates[param] = param - lr_mult * learning_rate * grad
 
     return updates
 
@@ -524,7 +529,7 @@ def adadelta(loss_or_grads, params, learning_rate=1.0, rho=0.95, epsilon=1e-6):
 
 
 def adam(loss_or_grads, params, learning_rate=0.001, beta1=0.9,
-         beta2=0.999, epsilon=1e-8):
+         beta2=0.999, epsilon=1e-8, lr_mults=None):
     """Adam updates
 
     Adam updates implemented as in [1]_.
@@ -566,12 +571,17 @@ def adam(loss_or_grads, params, learning_rate=0.001, beta1=0.9,
     updates = OrderedDict()
 
     for param, g_t in zip(params, all_grads):
+        if lr_mults is not None:
+            lr_mult = lr_mults.get(param, 1.)
+        else:
+            lr_mult = 1.
+
         m_prev = theano.shared(param.get_value() * 0.)
         v_prev = theano.shared(param.get_value() * 0.)
         t = t_prev + 1
         m_t = beta1*m_prev + (1-beta1)*g_t
         v_t = beta2*v_prev + (1-beta2)*g_t**2
-        a_t = learning_rate*T.sqrt(1-beta2**t)/(1-beta1**t)
+        a_t = lr_mult*learning_rate*T.sqrt(1-beta2**t)/(1-beta1**t)
         step = a_t*m_t/(T.sqrt(v_t) + epsilon)
 
         updates[m_prev] = m_t

@@ -1,4 +1,5 @@
 from collections import deque
+from collections import OrderedDict
 
 import theano
 import numpy as np
@@ -17,6 +18,7 @@ __all__ = [
     "set_all_param_values",
     "get_all_bias_params",
     "get_all_non_bias_params",
+    "get_all_param_lr_mults",
 ]
 
 
@@ -513,3 +515,12 @@ def set_all_param_values(layer, values, **tags):
                              (p.get_value().shape, v.shape))
         else:
             p.set_value(v)
+
+
+def get_all_param_lr_mults(layer, **tags):
+    layers = get_all_layers(layer)
+    param_lr_mults = sum([[(p, l.get_lr_mult(p)) for p in l.get_params(**tags)]
+                          for l in layers], [])
+    all_lr_mults = utils.unique(param_lr_mults, key=lambda pm: pm[0])
+    all_lr_mults_dict = OrderedDict({p: lr_mult for p,lr_mult in all_lr_mults})
+    return all_lr_mults_dict

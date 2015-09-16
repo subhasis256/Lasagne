@@ -40,6 +40,7 @@ class Layer(object):
 
         self.name = name
         self.params = OrderedDict()
+        self.lr_mults = OrderedDict()
 
         if any(d is not None and d <= 0 for d in self.input_shape):
             raise ValueError((
@@ -96,6 +97,9 @@ class Layer(object):
                       if not (self.params[param] & exclude)]
 
         return result
+
+    def get_lr_mult(self, param):
+        return self.lr_mults[param]
 
     def get_output_shape(self):  # pragma: no cover
         """
@@ -237,6 +241,7 @@ class Layer(object):
         tags['trainable'] = tags.get('trainable', True)
         tags['regularizable'] = tags.get('regularizable', True)
         self.params[param] = set(tag for tag, value in tags.items() if value)
+        self.lr_mults[param] = tags.get('lr_mult', 1.)
 
         return param
 
@@ -274,6 +279,7 @@ class MergeLayer(Layer):
                              for incoming in incomings]
         self.name = name
         self.params = OrderedDict()
+        self.lr_mults = OrderedDict()
 
     @Layer.output_shape.getter
     def output_shape(self):

@@ -207,6 +207,7 @@ class Conv2DCCLayer(CCLayer):
                  border_mode=None, untie_biases=False, W=None,
                  b=init.Constant(0.), nonlinearity=nonlinearities.rectify,
                  pad=None, dimshuffle=True, flip_filters=False, partial_sum=1,
+                 W_lr_mult=1., b_lr_mult=1.,
                  **kwargs):
         super(Conv2DCCLayer, self).__init__(incoming, **kwargs)
         if nonlinearity is None:
@@ -275,7 +276,8 @@ class Conv2DCCLayer(CCLayer):
             else:
                 W = init.GlorotUniform(c01b=True)
 
-        self.W = self.add_param(W, self.get_W_shape(), name="W")
+        self.W = self.add_param(W, self.get_W_shape(), name="W",
+                                lr_mult=W_lr_mult)
         if b is None:
             self.b = None
         else:
@@ -289,7 +291,7 @@ class Conv2DCCLayer(CCLayer):
             else:
                 biases_shape = (num_filters,)
             self.b = self.add_param(b, biases_shape, name="b",
-                                    regularizable=False)
+                                    regularizable=False, lr_mult=b_lr_mult)
 
         self.filter_acts_op = FilterActs(
             stride=self.stride, partial_sum=self.partial_sum, pad=self.pad)
@@ -643,7 +645,9 @@ class NINLayer_c01b(Layer):
     """
     def __init__(self, incoming, num_units, untie_biases=False,
                  W=init.GlorotUniform(), b=init.Constant(0.),
-                 nonlinearity=nonlinearities.rectify, **kwargs):
+                 nonlinearity=nonlinearities.rectify,
+                 W_lr_mult=1., b_lr_mult=1.,
+                 **kwargs):
         super(NINLayer_c01b, self).__init__(incoming, **kwargs)
         if nonlinearity is None:
             self.nonlinearity = nonlinearities.identity
@@ -655,7 +659,8 @@ class NINLayer_c01b(Layer):
 
         num_input_channels = self.input_shape[0]
 
-        self.W = self.add_param(W, (num_units, num_input_channels), name="W")
+        self.W = self.add_param(W, (num_units, num_input_channels), name="W",
+                                lr_mult=W_lr_mult)
         if b is None:
             self.b = None
         else:
@@ -664,7 +669,7 @@ class NINLayer_c01b(Layer):
             else:
                 biases_shape = (num_units,)
             self.b = self.add_param(b, biases_shape, name="b",
-                                    regularizable=False)
+                                    regularizable=False, lr_mult=b_lr_mult)
 
     def get_output_shape_for(self, input_shape):
         return (self.num_units,) + input_shape[1:]

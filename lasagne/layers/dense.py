@@ -60,6 +60,7 @@ class DenseLayer(Layer):
     """
     def __init__(self, incoming, num_units, W=init.GlorotUniform(),
                  b=init.Constant(0.), nonlinearity=nonlinearities.rectify,
+                 W_lr_mult=1., b_lr_mult=1.,
                  **kwargs):
         super(DenseLayer, self).__init__(incoming, **kwargs)
         self.nonlinearity = (nonlinearities.identity if nonlinearity is None
@@ -69,12 +70,13 @@ class DenseLayer(Layer):
 
         num_inputs = int(np.prod(self.input_shape[1:]))
 
-        self.W = self.add_param(W, (num_inputs, num_units), name="W")
+        self.W = self.add_param(W, (num_inputs, num_units), name="W",
+                                lr_mult=W_lr_mult)
         if b is None:
             self.b = None
         else:
             self.b = self.add_param(b, (num_units,), name="b",
-                                    regularizable=False)
+                                    regularizable=False, lr_mult=b_lr_mult)
 
     def get_output_shape_for(self, input_shape):
         return (input_shape[0], self.num_units)
@@ -174,7 +176,9 @@ class NINLayer(Layer):
     """
     def __init__(self, incoming, num_units, untie_biases=False,
                  W=init.GlorotUniform(), b=init.Constant(0.),
-                 nonlinearity=nonlinearities.rectify, **kwargs):
+                 nonlinearity=nonlinearities.rectify,
+                 W_lr_mult=1., b_lr_mult=1.,
+                 **kwargs):
         super(NINLayer, self).__init__(incoming, **kwargs)
         self.nonlinearity = (nonlinearities.identity if nonlinearity is None
                              else nonlinearity)
@@ -184,7 +188,8 @@ class NINLayer(Layer):
 
         num_input_channels = self.input_shape[1]
 
-        self.W = self.add_param(W, (num_input_channels, num_units), name="W")
+        self.W = self.add_param(W, (num_input_channels, num_units), name="W",
+                                lr_mult=W_lr_mult)
         if b is None:
             self.b = None
         else:
@@ -193,7 +198,7 @@ class NINLayer(Layer):
             else:
                 biases_shape = (num_units,)
             self.b = self.add_param(b, biases_shape, name="b",
-                                    regularizable=False)
+                                    regularizable=False, lr_mult=b_lr_mult)
 
     def get_output_shape_for(self, input_shape):
         return (input_shape[0], self.num_units) + input_shape[2:]

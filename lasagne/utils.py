@@ -113,7 +113,7 @@ def one_hot(x, m=None):
     return T.eye(m)[T.cast(x, 'int32')]
 
 
-def unique(l):
+def unique(l, key=lambda x:x, val=lambda x:x):
     """Filters duplicates of iterable.
 
     Create a new list from l with duplicate entries removed,
@@ -129,12 +129,14 @@ def unique(l):
     list
         A list of elements of `l` without duplicates and in the same order.
     """
-    new_list = []
+    new_key_list = []
+    new_val_list = []
     for el in l:
-        if el not in new_list:
-            new_list.append(el)
+        if key(el) not in new_key_list:
+            new_val_list.append(val(el))
+            new_key_list.append(key(el))
 
-    return new_list
+    return new_val_list
 
 
 def as_tuple(x, N):

@@ -189,7 +189,9 @@ class Conv1DLayer(Layer):
                  border_mode="valid", untie_biases=False,
                  W=init.GlorotUniform(), b=init.Constant(0.),
                  nonlinearity=nonlinearities.rectify,
-                 convolution=conv.conv1d_mc0, **kwargs):
+                 convolution=conv.conv1d_mc0,
+                 W_lr_mult=1., b_lr_mult=1.,
+                 **kwargs):
         super(Conv1DLayer, self).__init__(incoming, **kwargs)
         if nonlinearity is None:
             self.nonlinearity = nonlinearities.identity
@@ -206,7 +208,8 @@ class Conv1DLayer(Layer):
         if self.border_mode not in ['valid', 'full', 'same']:
             raise RuntimeError("Invalid border mode: '%s'" % self.border_mode)
 
-        self.W = self.add_param(W, self.get_W_shape(), name="W")
+        self.W = self.add_param(W, self.get_W_shape(), name="W",
+                                lr_mult=W_lr_mult)
         if b is None:
             self.b = None
         else:
@@ -215,7 +218,7 @@ class Conv1DLayer(Layer):
             else:
                 biases_shape = (num_filters,)
             self.b = self.add_param(b, biases_shape, name="b",
-                                    regularizable=False)
+                                    regularizable=False, lr_mult=b_lr_mult)
 
     def get_W_shape(self):
         """Get the shape of the weight matrix `W`.
@@ -368,10 +371,12 @@ class Conv2DLayer(Layer):
     may negatively affect performance.
     """
     def __init__(self, incoming, num_filters, filter_size, stride=(1, 1),
-                 border_mode="valid", untie_biases=False,
+                 border_mode="valid", untie_biases=False, flip_filters=False,
                  W=init.GlorotUniform(), b=init.Constant(0.),
                  nonlinearity=nonlinearities.rectify,
-                 convolution=T.nnet.conv2d, **kwargs):
+                 convolution=T.nnet.conv2d,
+                 W_lr_mult=1., b_lr_mult=1.,
+                 **kwargs):
         super(Conv2DLayer, self).__init__(incoming, **kwargs)
         if nonlinearity is None:
             self.nonlinearity = nonlinearities.identity
@@ -383,12 +388,14 @@ class Conv2DLayer(Layer):
         self.stride = as_tuple(stride, 2)
         self.border_mode = border_mode
         self.untie_biases = untie_biases
+        self.flip_filters = flip_filters
         self.convolution = convolution
 
         if self.border_mode not in ['valid', 'full', 'same']:
             raise RuntimeError("Invalid border mode: '%s'" % self.border_mode)
 
-        self.W = self.add_param(W, self.get_W_shape(), name="W")
+        self.W = self.add_param(W, self.get_W_shape(), name="W",
+                                lr_mult=W_lr_mult)
         if b is None:
             self.b = None
         else:
@@ -398,7 +405,7 @@ class Conv2DLayer(Layer):
             else:
                 biases_shape = (num_filters,)
             self.b = self.add_param(b, biases_shape, name="b",
-                                    regularizable=False)
+                                    regularizable=False, lr_mult=b_lr_mult)
 
     def get_W_shape(self):
         """Get the shape of the weight matrix `W`.
@@ -433,8 +440,12 @@ class Conv2DLayer(Layer):
 
         filter_shape = self.get_W_shape()
 
+        filters = self.W
+        if self.flip_filters:
+            filters = self.W[:,:,::-1,::-1]
+
         if self.border_mode in ['valid', 'full']:
-            conved = self.convolution(input, self.W, subsample=self.stride,
+            conved = self.convolution(input, filters, subsample=self.stride,
                                       image_shape=input_shape,
                                       filter_shape=filter_shape,
                                       border_mode=self.border_mode)
@@ -444,7 +455,7 @@ class Conv2DLayer(Layer):
                                           "border_mode 'same' is not "
                                           "supported by this layer yet.")
 
-            conved = self.convolution(input, self.W, subsample=self.stride,
+            conved = self.convolution(input, filters, subsample=self.stride,
                                       image_shape=input_shape,
                                       filter_shape=filter_shape,
                                       border_mode='full')

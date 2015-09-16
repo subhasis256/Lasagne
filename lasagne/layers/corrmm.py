@@ -136,7 +136,9 @@ class Conv2DMMLayer(MMLayer):
     def __init__(self, incoming, num_filters, filter_size, stride=(1, 1),
                  border_mode=None, untie_biases=False, W=init.GlorotUniform(),
                  b=init.Constant(0.), nonlinearity=nonlinearities.rectify,
-                 pad=None, flip_filters=False, **kwargs):
+                 pad=None, flip_filters=False,
+                 W_lr_mult=1., b_lr_mult=1.,
+                 **kwargs):
         super(Conv2DMMLayer, self).__init__(incoming, **kwargs)
         if nonlinearity is None:
             self.nonlinearity = nonlinearities.identity
@@ -171,7 +173,8 @@ class Conv2DMMLayer(MMLayer):
         else:
             self.pad = as_tuple(pad, 2)
 
-        self.W = self.add_param(W, self.get_W_shape(), name="W")
+        self.W = self.add_param(W, self.get_W_shape(), name="W",
+                                lr_mult=W_lr_mult)
         if b is None:
             self.b = None
         else:
@@ -181,7 +184,7 @@ class Conv2DMMLayer(MMLayer):
             else:
                 biases_shape = (num_filters,)
             self.b = self.add_param(b, biases_shape, name="b",
-                                    regularizable=False)
+                                    regularizable=False, lr_mult=b_lr_mult)
 
         self.corr_mm_op = GpuCorrMM(subsample=self.stride, pad=self.pad)
 
