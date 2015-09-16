@@ -459,7 +459,6 @@ class Conv2DLayer(Layer):
         if input_shape is None:
             input_shape = self.input_shape
 
-<<<<<<< HEAD
         filter_shape = self.get_W_shape()
 
         filters = self.W
@@ -480,13 +479,6 @@ class Conv2DLayer(Layer):
             conved = self.convolution(input, filters, subsample=self.stride,
                                       image_shape=input_shape,
                                       filter_shape=filter_shape,
-=======
-        if self.stride == (1, 1) and self.pad == 'same':
-            # simulate same convolution by cropping a full convolution
-            conved = self.convolution(input, self.W, subsample=self.stride,
-                                      image_shape=input_shape,
-                                      filter_shape=self.get_W_shape(),
->>>>>>> 3a09ef61fd57638c65d909a9f77ee897306ddbb7
                                       border_mode='full')
             shift_x = (self.filter_size[0] - 1) // 2
             shift_y = (self.filter_size[1] - 1) // 2
