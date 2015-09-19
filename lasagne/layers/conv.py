@@ -755,5 +755,5 @@ class Conv3DLayer(Layer):
 
         output_dimshuffled = self.nonlinearity(activation)
 
-        return output.dimshuffle(0, 2, 1, 3, 4)
+        return output_dimshuffled.dimshuffle(0, 2, 1, 3, 4)
 
