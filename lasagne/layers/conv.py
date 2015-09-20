@@ -617,7 +617,7 @@ class Conv3DLayer(Layer):
                  pad=0, untie_biases=False, flip_filters=False,
                  W=init.GlorotUniform(), b=init.Constant(0.),
                  nonlinearity=nonlinearities.rectify,
-                 convolution=T.nnet.conv3d2d.conv3d,
+                 convolution=T.nnet.conv3D,
                  W_lr_mult=1., b_lr_mult=1.,
                  **kwargs):
         super(Conv3DLayer, self).__init__(incoming, **kwargs)
