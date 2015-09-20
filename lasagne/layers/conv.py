@@ -1,4 +1,5 @@
 import theano.tensor as T
+from theano.tensor.nnet.conv3d2d import conv3d as conv3d2d
 
 from .. import init
 from .. import nonlinearities
@@ -617,7 +618,7 @@ class Conv3DLayer(Layer):
                  pad=0, untie_biases=False, flip_filters=False,
                  W=init.GlorotUniform(), b=init.Constant(0.),
                  nonlinearity=nonlinearities.rectify,
-                 convolution=T.nnet.conv3D,
+                 convolution=conv3d2d,
                  W_lr_mult=1., b_lr_mult=1.,
                  **kwargs):
         super(Conv3DLayer, self).__init__(incoming, **kwargs)
